@@ -1,0 +1,1 @@
+This app mutes the audio in the home screen of the Oculus Quest.
