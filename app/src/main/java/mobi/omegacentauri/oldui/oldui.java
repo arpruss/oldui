@@ -45,4 +45,8 @@ public class oldui extends Activity {
             }
         });
     }
+
+    public void go(View view) {
+        startAnytimeUI(this);
+    }
 }
