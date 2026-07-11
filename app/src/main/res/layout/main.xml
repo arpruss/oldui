@@ -15,5 +15,11 @@
         android:id="@+id/checkBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Activate on boot" />
+        android:text="Activate old UI on boot" />
+    <CheckBox
+        android:id="@+id/checkBoxLL"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:text="Run Lightning Launcher on boot" />
 </LinearLayout>

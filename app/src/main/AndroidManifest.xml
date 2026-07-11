@@ -4,6 +4,11 @@
     package="mobi.omegacentauri.oldui"
     tools:ignore="MissingLeanbackSupport">
 
+    <queries>
+        <package android:name="com.threethan.launcher.metastore" />
+        <package android:name="com.threethan.launcher" />
+    </queries>
+
     <supports-screens android:xlargeScreens="true"
         android:largeScreens="true"
         android:normalScreens="true"

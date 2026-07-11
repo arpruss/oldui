@@ -13,6 +13,8 @@ public class BootReceiver extends BroadcastReceiver {
             SharedPreferences options = PreferenceManager.getDefaultSharedPreferences(context);
             if (options.getBoolean("onBoot", false))
                 oldui.startAnytimeUI(context);
+            if (options.getBoolean("ll", false))
+                oldui.startLL(context);
         }
     }
 }
