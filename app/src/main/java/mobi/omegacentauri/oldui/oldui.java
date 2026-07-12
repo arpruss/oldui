@@ -6,13 +6,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.util.Log;
+import android.provider.Settings;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
+import android.widget.TextView;
 
 public class oldui extends Activity {
 
@@ -26,6 +27,32 @@ public class oldui extends Activity {
         i.setComponent(new ComponentName(pkg, cls));
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(i);
+        AccessibilityService as = AccessibilityService.getInstance();
+        if (as != null) {
+            as.startTime = 0;
+            as.state = 0;
+            settingsForShell(context);
+        }
+    }
+
+    private static void settingsForShell(Context context) {
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+
+        // Attach the package name to the intent so Android knows which app to show
+        Uri uri = Uri.parse("package:" + "com.oculus.vrshell");
+        intent.setData(uri);
+        intent.setPackage(SETTINGS);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_TASK_ON_HOME);
+        context.startActivity(intent);
+    }
+
+    public static void startStore(Context context) {
+        String pkg = "com.oculus.store";
+        String cls = "com.oculus.store.StoreActivity";
+        Intent i = new Intent();
+        i.setComponent(new ComponentName(pkg, cls));
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        context.startActivity(i);
     }
 
     public static Intent getLLIntent(Context context) {
@@ -35,7 +62,6 @@ public class oldui extends Activity {
         if (i != null)
             return i;
         i = packageManager.getLaunchIntentForPackage("com.threethan.launcher.metastore");
-        Log.v("ARP", "i "+(i!=null));
         return i;
     }
 
@@ -56,8 +82,8 @@ public class oldui extends Activity {
     }
 
     @Override
-    public void onStart() {
-        super.onStart();
+    public void onResume() {
+        super.onResume();
         CheckBox cb = findViewById(R.id.checkBox);
         cb.setChecked(options.getBoolean("onBoot", false));
         cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -80,9 +106,29 @@ public class oldui extends Activity {
         else {
             cb.setVisibility(View.GONE);
         }
+        TextView tv = (TextView)findViewById(R.id.accssibilityMode);
+        if (AccessibilityService.getInstance() == null) {
+            tv.setText("Current mode: launch. To switch to kill mode, you need to activate "+
+                    "OldUI's accessibility service. Click on 'Go to Settings', then 'Open', "+
+                    "then scroll to Accessibility, and activate OldUI's accessibility service.");
+        }
+        else {
+            tv.setText("Current mode: kill. To switch to launch mode, you need to deactivate "+
+                    "OldUI's accessibility service. Click on 'Go to Settings', then 'Open', "+
+                    "then scroll to Accessibility, and deactivate OldUI's accessibility service.");
+
+        }
     }
 
     public void go(View view) {
         startAnytimeUI(this);
+    }
+
+    public void settings(View view) {
+        Intent i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.parse("package:" + SETTINGS));
+        i.setPackage(SETTINGS);
+        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_TASK_ON_HOME);
+        startActivity(i);
     }
 }

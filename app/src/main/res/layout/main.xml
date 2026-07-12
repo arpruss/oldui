@@ -22,4 +22,17 @@
         android:layout_height="wrap_content"
         android:visibility="gone"
         android:text="Run Lightning Launcher on boot" />
+
+    <TextView
+        android:id="@+id/accssibilityMode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""/>
+    <Button
+        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:id="@+id/settings"
+        android:text="Go to Settings"
+        android:onClick="settings"/>
+
 </LinearLayout>
