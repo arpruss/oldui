@@ -243,9 +243,9 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
         if (node == null) return null;
 
         String text = node.getText() != null ? node.getText().toString() : "";
-        if (node.isClickable())
-            Log.v("OldUI", "***");
-        Log.v("OldUI", "::"+text);
+//        if (node.isClickable())
+//            Log.v("OldUI", "***");
+//        Log.v("OldUI", "::"+text);
 
         // Only log nodes that actually contain some text or description
         if (text.equals(toFind)) {
