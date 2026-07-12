@@ -10,6 +10,8 @@ import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -24,6 +26,7 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
     public long lastRestart = -100000;
     public boolean launchLL = false;
     private SharedPreferences options;
+    private boolean useEnglish;
 
     public static AccessibilityService getInstance() {
         return instance;
@@ -37,14 +40,17 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
             instance = null;
             state = -1;
         }
-
-        instance = this;
+        else {
+            instance = this;
+        }
         Intent intent = new Intent("mobi.omegacentauri.oldui.modeChange");
         sendBroadcast(intent);
+        useEnglish = Locale.getDefault().getLanguage().equals("en");
+        Log.v("OldUI", "english "+useEnglish);
     }
 
     public static boolean supportedLanguage() {
-        return Locale.getDefault().getLanguage().equals("en");
+        return true; // Locale.getDefault().getLanguage().equals("en");
     }
 
     @Override
@@ -76,7 +82,7 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
                 String text = event.getText().toString();
                 AccessibilityNodeInfo rootNode = getRootInActiveWindow();
                 if (rootNode == null) return;
-                Log.v("OldUI", "app:"+appName+" "+rootNode.getPackageName());
+                Log.v("OldUI", "app:"+appName+" "+rootNode.getPackageName()+ " "+text+(event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)+ " "+state );
                 if (! rootNode.getPackageName().equals("com.android.settings")) {
                     if (lastRestart + 1000 < System.currentTimeMillis()) {
                         state = 0;
@@ -97,54 +103,84 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
                 if (n != null) {
                     Log.v("OldUI", "app info");
 
-                    AccessibilityNodeInfo s = findNode(rootNode, "Storage & cache");
+                    if (useEnglish) {
+                        AccessibilityNodeInfo s = findNode(rootNode, "Storage & cache");
+                        if (s == null)
+                            s = findNode(rootNode, "Storage and cache");
 
-                    if (s != null && click(s)) {
-                        Log.v("OldUI", "storage click");
-                        startTime = System.currentTimeMillis();
-                        state = WAITING_FOR_STORAGE;
-                    }
-                    else {
-                        Log.v("OldUI", "cannot find Storage & cache");
-                    }
-                }
-                else if (text.equals("[Storage]")) {
-                    Log.v("OldUI", "storage");
-                    AccessibilityNodeInfo c = findNode(rootNode, "CLEAR STORAGE");
-                    if (c != null && click(c)) {
-                        Log.v("OldUI", "clear click");
-                        c.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                        state = WAITING_FOR_DELETE;
-                    }
-                    else {
-                        Log.v("OldUI", "cannot find CLEAR STORAGE");
-                    }
-                }
-                else if (state == WAITING_FOR_DELETE && text.startsWith("[Delete app data?")) {
-                    Log.v("OldUI", "delete");
-                    AccessibilityNodeInfo d = findNode(rootNode, "DELETE");
-                    if (d != null && click(d)) {
-                        Log.v("OldUI", "delete click");
-                        state = -1;
-                        if (options.getBoolean("ll", false)) {
-                            Log.v("OldUI", "need to start LL");
-                            new Timer().schedule(new TimerTask() {
-                                @Override
-                                public void run() {
-                                    Log.v("OldUI", "starting LL");
-                                    PackageManager packageManager = getPackageManager();
-                                    Intent i;
-                                    i = packageManager.getLaunchIntentForPackage("com.threethan.launcher");
-                                    if (i == null)
-                                        i = packageManager.getLaunchIntentForPackage("com.threethan.launcher.metastore");
-                                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                    startActivity(i);
-                                }
-                            }, 3000);
+                        if (s != null && click(s)) {
+                            Log.v("OldUI", "storage click");
+                            startTime = System.currentTimeMillis();
+                            state = WAITING_FOR_STORAGE;
+                        } else {
+                            Log.v("OldUI", "cannot find Storage & cache");
                         }
                     }
                     else {
-                        Log.v("OldUI", "cannot find DELETE");
+                        List<AccessibilityNodeInfo> clickables = new ArrayList<>();
+                        getClickables(clickables, rootNode);
+                        Log.v("OldUI", "clickable count: "+clickables.size());
+                        if (clickables.size() == 7) {
+                            Log.v("OldUI", "storage click");
+                            startTime = System.currentTimeMillis();
+                            state = WAITING_FOR_STORAGE;
+                            clickables.get(5).performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                            findNode(rootNode, "ajfj");
+                        }
+                    }
+                }
+                else if (state == WAITING_FOR_STORAGE &&
+                        event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+                        (!useEnglish || text.equals("[Storage]"))
+                ) {
+                    Log.v("OldUI", "storage check");
+                    if (useEnglish) {
+                        AccessibilityNodeInfo c = findNode(rootNode, "CLEAR STORAGE");
+                        if (c != null && click(c)) {
+                             Log.v("OldUI", "clear click");
+                            c.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                            state = WAITING_FOR_DELETE;
+                        } else {
+                            Log.v("OldUI", "cannot find CLEAR STORAGE");
+                        }
+                    }
+                    else {
+                        List<AccessibilityNodeInfo> clickables = new ArrayList<>();
+                        getClickables(clickables, rootNode);
+                        Log.v("OldUI", "clickable count: "+clickables.size());
+                        if (clickables.size() == 4) {
+                            Log.v("OldUI", "clear click");
+                            startTime = System.currentTimeMillis();
+                            state = WAITING_FOR_DELETE;
+                            clickables.get(2).performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                        }
+                    }
+                }
+                else if (state == WAITING_FOR_DELETE &&
+                        event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+                        (!useEnglish || text.startsWith("[Delete app data?")) ) {
+                    Log.v("OldUI", "delete check");
+
+                    if (useEnglish) {
+                        AccessibilityNodeInfo d = findNode(rootNode, "DELETE");
+                        if (d != null && click(d)) {
+                            Log.v("OldUI", "delete click");
+                            state = -1;
+                            runLLIfNeeded();
+                        } else {
+                            Log.v("OldUI", "cannot find DELETE");
+                        }
+                    }
+                    else {
+                        List<AccessibilityNodeInfo> clickables = new ArrayList<>();
+                        getClickables(clickables, rootNode);
+                        Log.v("OldUI", "cickables size "+clickables.size());
+                        if (clickables.size() == 2) {
+                            Log.v("OldUI", "delete click");
+                            clickables.get(1).performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                            state = -1;
+                            runLLIfNeeded();
+                        }
                     }
                 }
                 else {
@@ -153,6 +189,36 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
 
                 rootNode.recycle();
             }
+        }
+    }
+
+    private void runLLIfNeeded() {
+        if (options.getBoolean("ll", false)) {
+            Log.v("OldUI", "need to start LL");
+            new Timer().schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    Log.v("OldUI", "starting LL");
+                    PackageManager packageManager = getPackageManager();
+                    Intent i;
+                    i = packageManager.getLaunchIntentForPackage("com.threethan.launcher");
+                    if (i == null)
+                        i = packageManager.getLaunchIntentForPackage("com.threethan.launcher.metastore");
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(i);
+                }
+            }, 3000);
+        }
+    }
+
+    private void getClickables(List<AccessibilityNodeInfo> list, AccessibilityNodeInfo node) {
+        if (node == null) return;
+
+        if (node.isClickable())
+            list.add(node);
+
+        for (int i = 0; i < node.getChildCount(); i++) {
+            getClickables(list, node.getChild(i));
         }
     }
 
@@ -177,7 +243,9 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
         if (node == null) return null;
 
         String text = node.getText() != null ? node.getText().toString() : "";
-       // Log.v("OldUI", "node:"+text+" "+node.toString());
+        if (node.isClickable())
+            Log.v("OldUI", "***");
+        Log.v("OldUI", "::"+text);
 
         // Only log nodes that actually contain some text or description
         if (text.equals(toFind)) {

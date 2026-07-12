@@ -17,6 +17,9 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 public class oldui extends Activity {
 
     private SharedPreferences options;
@@ -34,6 +37,12 @@ public class oldui extends Activity {
             as.startTime = 0;
             as.state = 0;
             settingsForShell(context);
+/*            new Timer().schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    settingsForShell(context);
+                }
+            }, 250); */
         }
     }
 
@@ -127,14 +136,13 @@ public class oldui extends Activity {
 
         if (AccessibilityService.getInstance() == null) {
             tv.setText("Current mode: launch. To switch to kill mode, you need to activate "+
-                    "OldUI's accessibility service. Click on 'Go to Settings', then 'Open', "+
+                    "OldUI's accessibility service. Click on 'Launch Android Settings', then 'Open', "+
                     "then scroll to Accessibility, and activate OldUI's accessibility service.");
         }
         else {
             tv.setText("Current mode: kill. To switch to launch mode, you need to deactivate "+
-                    "OldUI's accessibility service. Click on 'Go to Settings', then 'Open', "+
+                    "OldUI's accessibility service. Click on 'Launch Android Settings', then 'Open', "+
                     "then scroll to Accessibility, and deactivate OldUI's accessibility service.");
-
         }
     }
 

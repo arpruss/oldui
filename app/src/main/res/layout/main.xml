@@ -32,7 +32,7 @@
         android:layout_height="wrap_content"
         android:layout_width="match_parent"
         android:id="@+id/settings"
-        android:text="Go to Settings"
+        android:text="Launch Android Settings"
         android:onClick="settings"/>
 
 </LinearLayout>
