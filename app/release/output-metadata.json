@@ -11,8 +11,8 @@
       "type": "SINGLE",
       "filters": [],
       "attributes": [],
-      "versionCode": 1,
-      "versionName": "0.01",
+      "versionCode": 3,
+      "versionName": "0.03",
       "outputFile": "Old UI-release.apk"
     }
   ],

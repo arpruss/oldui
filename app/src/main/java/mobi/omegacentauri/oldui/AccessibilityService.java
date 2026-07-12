@@ -10,12 +10,13 @@ import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
+import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class AccessibilityService extends android.accessibilityservice.AccessibilityService {
     private static AccessibilityService instance = null;
-    public static int state = 0;
+    public static int state = -1;
     static final int WAITING_FOR_STORAGE = 1;
     static final int WAITING_FOR_DELETE = 2;
     static final int DISABLED = -1;
@@ -32,7 +33,18 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
     public void onCreate() {
         super.onCreate();
         options = PreferenceManager.getDefaultSharedPreferences(this);
+        if (! supportedLanguage()) {
+            instance = null;
+            state = -1;
+        }
+
         instance = this;
+        Intent intent = new Intent("mobi.omegacentauri.oldui.modeChange");
+        sendBroadcast(intent);
+    }
+
+    public static boolean supportedLanguage() {
+        return Locale.getDefault().getLanguage().equals("en");
     }
 
     @Override
@@ -44,11 +56,13 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
     @Override
     public boolean onUnbind(Intent intent) {
         instance = null;
+        Intent i = new Intent("mobi.omegacentauri.oldui.modeChange");
+        sendBroadcast(i);
         return super.onUnbind(intent);
     }
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        if (state < 0) {
+        if (state < 0 || instance == null) {
 //            disableSelf();
             return;
         }

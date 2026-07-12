@@ -8,8 +8,8 @@ android {
         minSdkVersion 31
         //noinspection EditedTargetSdkVersion
         targetSdkVersion 34
-        versionCode 1
-        versionName "0.01"
+        versionCode 3
+        versionName "0.03"
     }
     buildTypes {
         release {

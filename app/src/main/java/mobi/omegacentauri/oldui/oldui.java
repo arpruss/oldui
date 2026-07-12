@@ -1,9 +1,11 @@
 package mobi.omegacentauri.oldui;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -79,6 +81,13 @@ public class oldui extends Activity {
         super.onCreate(savedInstanceState);
         options = PreferenceManager.getDefaultSharedPreferences(this);
         setContentView(R.layout.main);
+        IntentFilter filter = new IntentFilter("mobi.omegacentauri.oldui.modeChange");
+        registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                updateMode();
+            }
+        }, filter);
     }
 
     @Override
@@ -106,7 +115,16 @@ public class oldui extends Activity {
         else {
             cb.setVisibility(View.GONE);
         }
+        updateMode();
+    }
+
+    private void updateMode() {
         TextView tv = (TextView)findViewById(R.id.accssibilityMode);
+        if (!AccessibilityService.supportedLanguage()) {
+            tv.setVisibility(View.GONE);
+            return;
+        }
+
         if (AccessibilityService.getInstance() == null) {
             tv.setText("Current mode: launch. To switch to kill mode, you need to activate "+
                     "OldUI's accessibility service. Click on 'Go to Settings', then 'Open', "+
