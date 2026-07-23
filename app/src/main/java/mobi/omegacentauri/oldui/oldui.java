@@ -12,6 +12,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
@@ -22,8 +23,11 @@ import java.util.TimerTask;
 
 public class oldui extends Activity {
 
+    public static final String OPTION_ONBOOT_LL = "ll";
     private SharedPreferences options;
     static final String SETTINGS = "com.android.settings";
+    static final String OPTION_ONBOOT_OLDUI = "onBootOldUI";
+    static final String OPTION_MUTE_HOME = "muteHome";
 
     public static void startAnytimeUI(Context context) {
         String pkg = "com.oculus.systemux";
@@ -79,8 +83,12 @@ public class oldui extends Activity {
     public static void startLL(Context context) {
         Intent i = getLLIntent(context);
         if (i != null) {
+            Log.v("OldUI", "running "+i.toString());
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(i);
+        }
+        else {
+            Log.v("OldUI", "cannot find LL");
         }
 
     }
@@ -103,46 +111,86 @@ public class oldui extends Activity {
     public void onResume() {
         super.onResume();
         CheckBox cb = findViewById(R.id.checkBox);
-        cb.setChecked(options.getBoolean("onBoot", false));
+        cb.setChecked(options.getBoolean(OPTION_ONBOOT_OLDUI, false));
         cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-                options.edit().putBoolean("onBoot", b).apply();
+                options.edit().putBoolean(OPTION_ONBOOT_OLDUI, b).apply();
             }
         });
+/*        cb = findViewById(R.id.closeStore);
+        cb.setChecked(options.getBoolean("closeStore", false));
+        cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                options.edit().putBoolean("closeStore", b).apply();
+            }
+        }); */
         cb = findViewById(R.id.checkBoxLL);
         if (null != getLLIntent(this)) {
             cb.setVisibility(View.VISIBLE);
-            cb.setChecked(options.getBoolean("ll", false));
+            cb.setChecked(options.getBoolean(OPTION_ONBOOT_LL, false)&&Settings.canDrawOverlays(oldui.this));
             cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 @Override
                 public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-                    options.edit().putBoolean("ll", b).apply();
+                    options.edit().putBoolean(OPTION_ONBOOT_LL, b).apply();
+                    if (b && !Settings.canDrawOverlays(oldui.this)) {
+                        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
+                        startActivityForResult(intent, 0);
+                    }
                 }
             });
         }
         else {
             cb.setVisibility(View.GONE);
         }
+        cb = findViewById(R.id.muteHome);
+        cb.setChecked(options.getBoolean(OPTION_MUTE_HOME, false));
+        cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                options.edit().putBoolean(OPTION_MUTE_HOME, b).apply();
+            }
+        });
+
         updateMode();
     }
 
     private void updateMode() {
         TextView tv = (TextView)findViewById(R.id.accssibilityMode);
-        if (!AccessibilityService.supportedLanguage()) {
-            tv.setVisibility(View.GONE);
-            return;
-        }
+//        if (!AccessibilityService.supportedLanguage()) {
+//            tv.setVisibility(View.GONE);
+//            return;
+//        }
 
         if (AccessibilityService.getInstance() == null) {
             tv.setText("Current mode: launch. To switch to kill mode, you need to activate "+
                     "OldUI's accessibility service. Click on 'Launch Android Settings', then 'Open', "+
                     "then scroll to Accessibility, and activate OldUI's accessibility service.");
+//            findViewById(R.id.closeStore).setVisibility(View.GONE);
         }
         else {
             tv.setText("Current mode: kill. To switch to launch mode, you need to deactivate "+
                     "OldUI's accessibility service. Click on 'Launch Android Settings', then 'Open', "+
                     "then scroll to Accessibility, and deactivate OldUI's accessibility service.");
+//            findViewById(R.id.closeStore).setVisibility(View.GONE);
+        }
+
+        TextView mw = (TextView)findViewById(R.id.muteWork);
+        if (PackageManager.PERMISSION_GRANTED != checkSelfPermission(android.Manifest.permission.READ_LOGS)) {
+            mw.setText("For Mute Home to work, use your PC to run:\n"+
+                    "adb shell pm grant mobi.omegacentauri.mutehome android.permission.READ_LOGS");
+            mw.setVisibility(View.VISIBLE);
+        }
+        else {
+            mw.setVisibility(View.VISIBLE);
+        }
+
+        if (options.getBoolean(OPTION_MUTE_HOME, false )) {
+            activateMonitoring(this, false);
+        }
+        else {
+            deactivateMonitoring(this);
         }
     }
 
@@ -154,7 +202,22 @@ public class oldui extends Activity {
         Intent i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                 Uri.parse("package:" + SETTINGS));
         i.setPackage(SETTINGS);
-        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_TASK_ON_HOME);
+        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        //i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_TASK_ON_HOME);
         startActivity(i);
+    }
+
+    public static void activateMonitoring(Context context, boolean boot) {
+        Intent serviceIntent = new Intent(context, Monitoring.class);
+        context.stopService(serviceIntent);
+        serviceIntent.putExtra("boot", boot);
+        context.startForegroundService(serviceIntent);
+        Log.v("OldUI", "activate monitoring");
+    }
+
+    static private void deactivateMonitoring(Context context) {
+        Intent serviceIntent = new Intent(context, Monitoring.class);
+        context.stopService(serviceIntent);
+        Log.v("OldUI", "deactivate monitoring");
     }
 }

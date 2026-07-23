@@ -16,13 +16,28 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Activate old UI on boot" />
+<!--    <CheckBox
+        android:id="@+id/closeStore"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:text="Auto-close Store" /> -->
     <CheckBox
         android:id="@+id/checkBoxLL"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        android:text="Run Lightning Launcher on boot" />
-
+        android:text="Auto-run Lightning Launcher" />
+    <CheckBox
+        android:id="@+id/muteHome"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Mute Home" />
+    <TextView
+        android:id="@+id/muteWork"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""/>
     <TextView
         android:id="@+id/accssibilityMode"
         android:layout_width="match_parent"

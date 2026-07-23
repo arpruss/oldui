@@ -9,3 +9,5 @@
     android:canRequestFilterKeyEvents="true"
     android:settingsActivity="" />
 <!-- <typeAllMask"  -->
+<!-- |flagRetrieveInteractiveWindows -->
+<!--     android:canPerformGestures="true" -->
