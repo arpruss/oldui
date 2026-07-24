@@ -1,5 +1,8 @@
 package mobi.omegacentauri.oldui;
 
+import static mobi.omegacentauri.oldui.oldui.startAnytimeUI;
+
+import android.accessibilityservice.AccessibilityService;
 import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -9,15 +12,21 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.LinkedList;
+import java.util.NoSuchElementException;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,9 +39,10 @@ public class Monitoring extends Service {
     private NotificationChannel mChannel;
     private SharedPreferences options;
     private int savedVolume = 8;
-    private boolean launchLL = false;
-    private boolean muteHome = false;
-    private boolean launchOldUI = false;
+    private boolean launchLL;
+    private boolean muteHome;
+    private boolean onBootOldUI;
+    private boolean bootFix;
 
     @Override
     public void onCreate() {
@@ -80,9 +90,17 @@ public class Monitoring extends Service {
         Notification.Builder nb;
         Log.v("OldUI", "onStartCommand");
 
-        launchLL = options.getBoolean(oldui.OPTION_ONBOOT_LL, false) && intent.getBooleanExtra("boot", false);
-        muteHome = options.getBoolean(oldui.OPTION_MUTE_HOME, false);
-        launchOldUI = options.getBoolean(oldui.OPTION_ONBOOT_OLDUI, false);
+        muteHome = options.getBoolean(oldui.OPTION_MUTE_HOME, false) && PackageManager.PERMISSION_GRANTED == checkSelfPermission(android.Manifest.permission.READ_LOGS);
+        if (intent.getBooleanExtra("boot", false)) {
+            bootFix = options.getBoolean(oldui.OPTION_BOOT_FIX, false) && BootStartFix.getInstance() != null;
+            onBootOldUI = options.getBoolean(oldui.OPTION_ONBOOT_OLDUI, false);
+            launchLL = options.getBoolean(oldui.OPTION_ONBOOT_LL, false);
+        }
+        else {
+            bootFix = false;
+            onBootOldUI = false;
+            launchLL = false;
+        }
 
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -106,7 +124,7 @@ public class Monitoring extends Service {
         nb.setContentTitle("OldUI");
         Notification notification = nb.build();
         if (notification == null) {
-            Log.e("mutehome", "null notification");
+            Log.e("OldUI", "null notification");
             // don't know what to do or how it can happen
         }
         if (Build.VERSION.SDK_INT >= 29) {
@@ -116,12 +134,59 @@ public class Monitoring extends Service {
             startForeground(startId, notification);
         }
 
-        if (!isMonitoring) {
+        if (!isMonitoring && muteHome) {
             isMonitoring = true;
             startLogcatThread();
         }
 
+        otherStuff();
+
         return START_STICKY;
+    }
+
+    PowerManager.WakeLock wakeLock = null;
+    private static final int RUN_NONE = 0;
+    private static final int RUN_LL = 1;
+    private static final int RUN_OLD_UI = 2;
+    private static final int RUN_BOOT_FIX_1 = 3;
+    private static final int RUN_BOOT_FIX_2 = 4;
+    private static final int RUN_BOOT_FIX_3 = 5;
+    private static final int RUN_END = -1;
+    TimerTask runner;
+
+    static class DelayedAction {
+        int action;
+        int delay;
+
+        public DelayedAction(int action, int delay) {
+            this.action = action;
+            this.delay = delay;
+        }
+    };
+
+    LinkedList<DelayedAction> actions;
+
+    private void otherStuff() {
+        Log.v("OldUI", "otherStuff");
+
+        actions = new LinkedList<>();
+        if (launchLL) {
+            actions.add(new DelayedAction(RUN_LL, 100));
+        }
+        if (onBootOldUI) {
+            actions.add(new DelayedAction(RUN_OLD_UI, 500));
+        }
+        if (bootFix) {
+            actions.add(new DelayedAction(RUN_BOOT_FIX_1, 1000));
+            actions.add(new DelayedAction(RUN_BOOT_FIX_2, 1500));
+            actions.add(new DelayedAction(RUN_BOOT_FIX_3, 1000));
+        }
+        actions.add(new DelayedAction(RUN_END, 500));
+        Log.v("OldUI", "actions "+actions.size());
+        if (!actions.isEmpty()) {
+            ActionTask runner = new ActionTask(this);
+            new Timer().schedule(runner, actions.getFirst().delay);
+        }
     }
 
     private void startLogcatThread() {
@@ -130,7 +195,6 @@ public class Monitoring extends Service {
                 // Pre-compile regex for performance
                 // Matches "Displayed com.package.name"
                 Pattern homePattern = Pattern.compile("wm_on_(start|stop)_called: .*com\\.oculus\\.vrshell\\.HomeActivity");
-                Pattern storePattern = Pattern.compile("wm_on_start_called: .*com\\.oculus\\.store");
 
                 // Clear logcat buffer first to avoid old logs triggering events
                 Runtime.getRuntime().exec("logcat -c");
@@ -148,27 +212,7 @@ public class Monitoring extends Service {
                         Log.v("OldUI", "matched home toggele "+packageName);
                         handleHomeDetected(packageName.equals("stop"));
                     }
-                    if (launchLL || launchOldUI) {
-                        matcher = storePattern.matcher(line);
-                        if (matcher.find()) {
-                            Log.v("OldUI", "matched store launch");
-                            if (launchLL) {
-                                launchLL = false;
-                                oldui.startLL(this);
-                            }
-                            if (launchOldUI) {
-                                launchOldUI = false;
-                                oldui.startAnytimeUI(this);
-                            }
-                            if (!muteHome) {
-                                Log.v("OldUI", "no need for more monitoring");
-                                isMonitoring = false;
-                            }
-                        }
-                    }
                 }
-                Log.v("OldUI", "monitoring done "+(line==null)+" "+isMonitoring);
-                stopSelf();
             } catch (Exception e) {
                 Log.e("OldUI", "Error reading logcat", e);
             }
@@ -206,4 +250,69 @@ public class Monitoring extends Service {
     public IBinder onBind(Intent intent) {
         return null;
     }
+
+    public class ActionTask extends TimerTask {
+        Context context;
+
+        public ActionTask(Context c) {
+            context = c;
+        }
+        @Override
+        public void run() {
+            try {
+                int a = actions.removeFirst().action;
+                switch (a) {
+                    case RUN_LL:
+                        Log.v("OldUI", "starting LL");
+                        oldui.startLL(context);
+                        break;
+                    case RUN_OLD_UI:
+                        Log.v("OldUI", "starting old UI");
+                        startAnytimeUI(context);
+                        break;
+                    case RUN_BOOT_FIX_1:
+                        Log.v("OldUI", "boot fix 1");
+                        BootStartFix.globalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN);
+                        break;
+                    case RUN_BOOT_FIX_2:
+                        Log.v("OldUI", "boot fix 2");
+                        PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+
+                        wakeLock = powerManager.newWakeLock(
+                                PowerManager.FULL_WAKE_LOCK |
+                                        PowerManager.ACQUIRE_CAUSES_WAKEUP |
+                                        PowerManager.ON_AFTER_RELEASE,
+                                "MyApp:WakeUpTag"
+                        );
+
+                        wakeLock.acquire(5000);
+                        break;
+                    case RUN_BOOT_FIX_3:
+                        Log.v("OldUI", "boot fix 3");
+                        if (wakeLock != null) {
+                            wakeLock.release();
+                            wakeLock = null;
+                        }
+                        break;
+                    case RUN_END:
+                        if (!muteHome) {
+                            Log.v("OldUI", "closing service");
+                            stopSelf();
+                        }
+                    default:
+                        break;
+                }
+
+            } catch (NoSuchElementException e) {
+            }
+
+            if (!actions.isEmpty()) {
+                ActionTask runner = new ActionTask(Monitoring.this);
+                new Timer().schedule(runner, actions.getFirst().delay);
+            }
+        }
+
+    }
+
+
 }
