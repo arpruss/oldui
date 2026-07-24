@@ -82,7 +82,7 @@ public class Monitoring extends Service {
 
         launchLL = options.getBoolean(oldui.OPTION_ONBOOT_LL, false) && intent.getBooleanExtra("boot", false);
         muteHome = options.getBoolean(oldui.OPTION_MUTE_HOME, false);
-        launchOldUI = options.getBoolean(oldui.OPTION_ONBOOT_OLDUI, false) && AccessibilityService.getInstance() == null;
+        launchOldUI = options.getBoolean(oldui.OPTION_ONBOOT_OLDUI, false);
 
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -163,12 +163,12 @@ public class Monitoring extends Service {
                             if (!muteHome) {
                                 Log.v("OldUI", "no need for more monitoring");
                                 isMonitoring = false;
-                                stopSelf();
                             }
                         }
                     }
                 }
                 Log.v("OldUI", "monitoring done "+(line==null)+" "+isMonitoring);
+                stopSelf();
             } catch (Exception e) {
                 Log.e("OldUI", "Error reading logcat", e);
             }

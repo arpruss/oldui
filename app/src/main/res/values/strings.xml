@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="accessibilityservice">OldUI Accessibility Service</string>
+    <string name="bootstartfix">OldUI Boot Start Fix</string>
 </resources>

@@ -24,6 +24,7 @@ import java.util.TimerTask;
 public class oldui extends Activity {
 
     public static final String OPTION_ONBOOT_LL = "ll";
+    public static final String OPTION_BOOT_FIX = "bootfix";
     private SharedPreferences options;
     static final String SETTINGS = "com.android.settings";
     static final String OPTION_ONBOOT_OLDUI = "onBootOldUI";
@@ -36,18 +37,6 @@ public class oldui extends Activity {
         i.setComponent(new ComponentName(pkg, cls));
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(i);
-        AccessibilityService as = AccessibilityService.getInstance();
-        if (as != null) {
-            as.startTime = 0;
-            as.state = 0;
-            settingsForShell(context);
-/*            new Timer().schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    settingsForShell(context);
-                }
-            }, 250); */
-        }
     }
 
     private static void settingsForShell(Context context) {
@@ -152,38 +141,33 @@ public class oldui extends Activity {
                 options.edit().putBoolean(OPTION_MUTE_HOME, b).apply();
             }
         });
+        cb = findViewById(R.id.bootFix);
+        cb.setChecked(options.getBoolean(OPTION_BOOT_FIX, false));
+        cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                options.edit().putBoolean(OPTION_BOOT_FIX, b).apply();
+            }
+        });
 
         updateMode();
     }
 
     private void updateMode() {
-        TextView tv = (TextView)findViewById(R.id.accssibilityMode);
-//        if (!AccessibilityService.supportedLanguage()) {
-//            tv.setVisibility(View.GONE);
-//            return;
-//        }
-
-        if (AccessibilityService.getInstance() == null) {
-            tv.setText("Current mode: launch. To switch to kill mode, you need to activate "+
-                    "OldUI's accessibility service. Click on 'Launch Android Settings', then 'Open', "+
-                    "then scroll to Accessibility, and activate OldUI's accessibility service.");
-//            findViewById(R.id.closeStore).setVisibility(View.GONE);
+        TextView tv = (TextView)findViewById(R.id.bootFixAccessibility);
+        if (BootStartFix.getInstance() == null) {
+            tv.setVisibility(View.VISIBLE);
         }
         else {
-            tv.setText("Current mode: kill. To switch to launch mode, you need to deactivate "+
-                    "OldUI's accessibility service. Click on 'Launch Android Settings', then 'Open', "+
-                    "then scroll to Accessibility, and deactivate OldUI's accessibility service.");
-//            findViewById(R.id.closeStore).setVisibility(View.GONE);
+            tv.setVisibility(View.GONE);
         }
 
         TextView mw = (TextView)findViewById(R.id.muteWork);
         if (PackageManager.PERMISSION_GRANTED != checkSelfPermission(android.Manifest.permission.READ_LOGS)) {
-            mw.setText("For Mute Home to work, use your PC to run:\n"+
-                    "adb shell pm grant mobi.omegacentauri.mutehome android.permission.READ_LOGS");
             mw.setVisibility(View.VISIBLE);
         }
         else {
-            mw.setVisibility(View.VISIBLE);
+            mw.setVisibility(View.GONE);
         }
 
         if (options.getBoolean(OPTION_MUTE_HOME, false )) {
