@@ -32,6 +32,8 @@ public class BootReceiver extends BroadcastReceiver {
 
         SharedPreferences options = PreferenceManager.getDefaultSharedPreferences(context);
         boolean bootFix = options.getBoolean(oldui.OPTION_BOOT_FIX, false);
+        if (bootFix && BootStartFix.getInstance() == null)
+            bootFix = false;
         onBootOldUI = options.getBoolean(oldui.OPTION_ONBOOT_OLDUI, false);
         launchLL = options.getBoolean(oldui.OPTION_ONBOOT_LL, false);
         boolean muteHome = options.getBoolean(oldui.OPTION_MUTE_HOME, false);
@@ -46,7 +48,7 @@ public class BootReceiver extends BroadcastReceiver {
                 onBootOldUI = false;
             }
 
-            // we will launch LL after the store
+            // we will launch LL and old UI after the store
             oldui.activateMonitoring(context, doLaunches);
         }
 
